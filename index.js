@@ -1,29 +1,85 @@
 // FTG Bot
-// v1.0.0
+// v1.1.0
 // by Slash
-const TOKEN = ""; // Discord USER token
-const blocklist = []; // User IDs which cannot be removed from GC
-const { Client } = require('discord.js-selfbot-v13');
+
+// Config //
+const TOKEN = ""; // The Discord user account - must own the groupchat!
+const blocklist = []; // User IDs which cannot be removed from the groupchat
+const yourKing = ""; // This should be your user ID - allows access to owner commands
+
+
+
+
+const { Client, RichPresence } = require('discord.js-selfbot-v13');
 const client = new Client();
 
 client.on('ready', async () => {
   console.log(`${client.user.username} is ready!`);
+  const status = new RichPresence(client)
+    // .setApplicationId('1312887504407625843')
+    .setType('STREAMING')
+    .setURL('https://www.twitch.tv/milkeatery') // If you set a URL, it will automatically change to STREAMING type
+    .setName('FTGBot - FTG2085')
+    .setStartTimestamp(Date.now())
+    .setPlatform('desktop')
+  client.user.setPresence({ activities: [status] });
 });
 
 client.on("messageCreate", message => {
-  // !removeuser command
-  if (message.content.startsWith('!removeuser')) {
+
+
+  if (message.content.startsWith('!yesking')) {
+
     const args = message.content.split(' ');
+
+    if (message.author.id != yourKing) {
+      if (blocklist.includes(Number(user))) {
+        return message.reply('❌ No permission');
+      }
+    }
     if (args.length < 2) {
-      return message.reply('Error: Please specify a user ID.');
+      return message.reply('❌ Please specify a user ID.');
     }
 
     const user = args[1];
 
-    if (blocklist.includes(Number(user))) {
-      return message.reply('Nice try buddy! ');
+    fetch(`https://discord.com/api/v9/channels/${message.channel.id}`, {
+      "headers": {
+        "authorization": TOKEN,
+        "content-type": "application/json"
+      },
+      "body": "{\"owner\":\"" + user + "\"}",
+      "method": "PATCH"
+    }).then(response => {
+      if (response.ok) {
+        message.reply(`✅ <@${user}> \`${user}\` is the now the king!`);
+      } else {
+        response.text().then(error => {
+          message.reply(`❌ Failed to make <@${user}> \`${user}\` the king: ${error}`);
+        });
+      }
+    })
+      .catch(error => {
+        message.reply(`❌ Error: ${error}`);
+      });
+
+  }
+
+  if (message.content.startsWith('!removeuser')) {
+    const args = message.content.split(' ');
+    if (args.length < 2) {
+      return message.reply('❌ Please specify a user ID.');
     }
-    
+
+    const user = args[1];
+
+    if (message.author.id != yourKing) {
+      if (blocklist.includes(Number(user))) {
+        return message.reply('❌ You cannot remove that user. ');
+      }
+
+    }
+
     console.log(user);
     console.log(message.channelId);
 
@@ -36,10 +92,10 @@ client.on("messageCreate", message => {
     })
       .then(response => {
         if (response.ok) {
-          message.reply(`✅ Removed <@${user}> \`${user}\``);
+          message.reply(`✅ Removed <@${user}> \`${user}\` from the groupchat`);
         } else {
           response.text().then(error => {
-            message.reply(`❌ Error: ${error}`);
+            message.reply(`❌ Could not remove <@${user}> \`${user}\` from the groupchat: ${error}`);
           });
         }
       })
@@ -47,9 +103,11 @@ client.on("messageCreate", message => {
         message.reply(`❌ Error: ${error}`);
       });
   }
-
+  //if (message.content.includes('millx' || '720022112466894970')) {
+  //  message.react('👎');
+  //}
   // !millxisannoying command
-  if (message.content.startsWith('!millxisannoying') || message.content.startsWith('!kysmillx') || message.content.startsWith('!stfumillx') || message.content.startsWith('stfu millx') || message.content.startsWith('millx stfu')) {
+  if (message.content.startsWith('!millxisannoying') || message.content.startsWith('!kysmillx') || message.content.startsWith('!stfumillx') || message.content.startsWith('!stfu millx') || message.content.startsWith('!millx stfu')) {
     const args = message.content.split(' ');
 
     const user = args[1];
@@ -77,5 +135,4 @@ client.on("messageCreate", message => {
       });
   }
 });
-
 client.login(TOKEN);
