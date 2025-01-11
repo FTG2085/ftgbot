@@ -2,14 +2,15 @@
  * FTGBot - FTG2085
  * 
  * A selfbot to perform various administrative actions in a Discord group or channel.
- * This code is intended for educational and demonstration purposes only. 
+ * This code is intended for educational and demonstration purposes only.
  * USE AT YOUR OWN RISK. Selfbot behavior may violate Discord's Terms of Service.
  *
- * @fileoverview Main entry point for FTGBot (FTG2085) - A Discord selfbot by FTG2085
+ * @fileoverview Main entry point for FTGBot (FTG2085).
  * @version 2.0
  */
 
 const { Client, RichPresence } = require('discord.js-selfbot-v13');
+const chalk = require('chalk');
 
 /**
  * -------------------------------------------------------------------
@@ -17,9 +18,11 @@ const { Client, RichPresence } = require('discord.js-selfbot-v13');
  * -------------------------------------------------------------------
  * Replace these placeholder values with your own details.
  */
-const TOKEN = "YOUR_DISCORD_TOKEN_HERE"; // A Discord USER token
-const BOT_USER_ID = "YOUR_BOT_USER_ID";  // The user ID of the selfbot
-const OWNER_ID = "YOUR_OWNER_ID";        // Your user ID
+
+// IMPORTANT: Use caution; exposing your personal token publicly can lead to account insecurities.
+const TOKEN = "YOUR_DISCORD_USER_TOKEN"; // A Discord USER token
+const BOT_USER_ID = "YOUR_BOT_USER_ID";   // The user ID of the selfbot
+const OWNER_ID = "YOUR_OWNER_ID";         // Your user ID
 const DEBUG_MODE = false; // Enables debug logging
 
 /**
@@ -27,15 +30,12 @@ const DEBUG_MODE = false; // Enables debug logging
  * @type {number[]}
  */
 const blocklist = [
-  123456789012345678,
-  234567890123456789,
-  345678901234567890
+  111111111111111111, // Replace with user ID(s) you want protected
+  222222222222222222,
+  333333333333333333
 ];
 
 // End configuration
-
-
-
 
 /**
  * Initialize selfbot client.
@@ -48,7 +48,7 @@ const client = new Client();
  * Sets a custom presence on Discord and logs a status message.
  */
 client.on('ready', async () => {
-  console.log(`[INFO] Logged in as ${client.user.username}`);
+  console.log(chalk.green(`[INFO] Logged in as ${client.user.username}`));
 
   // Set up custom Rich Presence
   const status = new RichPresence(client)
@@ -60,9 +60,9 @@ client.on('ready', async () => {
 
   try {
     await client.user.setPresence({ activities: [status] });
-    console.log('[INFO] Presence set successfully.');
+    console.log(chalk.green('[INFO] Presence set successfully.'));
   } catch (presenceError) {
-    console.error('[ERROR] Failed to set presence:', presenceError);
+    console.error(chalk.red('[ERROR] Failed to set presence:'), presenceError);
   }
 });
 
@@ -97,12 +97,12 @@ async function safeReply(message, replyText) {
   try {
     if (message.channel) {
       await message.reply(replyText);
-      if (DEBUG_MODE) console.log(`[DEBUG] Replied to message: ${replyText}`);
+      if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Replied to message: ${replyText}`));
     } else {
       throw new Error('CHANNEL_NOT_CACHED');
     }
   } catch (error) {
-    console.error(`[ERROR] ${error.message}. Could not find the channel in the cache!`);
+    console.error(chalk.red(`[ERROR] ${error.message}. Could not find the channel in the cache!`));
   }
 }
 
@@ -122,10 +122,10 @@ async function makeUserKing(channelId, newOwner) {
       body: JSON.stringify({ owner: newOwner }),
       method: 'PATCH'
     });
-    if (DEBUG_MODE) console.log(`[DEBUG] Attempting to make user owner: ${newOwner}`);
+    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Attempting to make user owner: ${newOwner}`));
     return response;
   } catch (err) {
-    console.error(`[ERROR] Failed to make user owner: ${err}`);
+    console.error(chalk.red(`[ERROR] Failed to make user owner:`), err);
     return { ok: false, statusText: err.message };
   }
 }
@@ -145,10 +145,10 @@ async function removeUserFromGroup(channelId, userId) {
         'Content-Type': 'application/json'
       }
     });
-    if (DEBUG_MODE) console.log(`[DEBUG] DELETE request to remove user: ${userId}`);
+    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] DELETE request to remove user: ${userId}`));
     return response;
   } catch (err) {
-    console.error(`[ERROR] Failed to remove user from group: ${err}`);
+    console.error(chalk.red(`[ERROR] Failed to remove user from group:`), err);
     return { ok: false, statusText: err.message };
   }
 }
@@ -166,10 +166,10 @@ async function getChannelData(channelId) {
         'Content-Type': 'application/json'
       }
     });
-    if (DEBUG_MODE) console.log(`[DEBUG] Fetching channel data for: ${channelId}`);
+    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Fetching channel data for: ${channelId}`));
     return await response.json();
   } catch (err) {
-    console.error(`[ERROR] Failed to fetch channel data: ${err}`);
+    console.error(chalk.red(`[ERROR] Failed to fetch channel data:`), err);
     return null;
   }
 }
@@ -188,10 +188,10 @@ async function createNewGroupChat() {
       body: JSON.stringify({ recipients: blocklist.map(String) }),
       method: 'POST'
     });
-    if (DEBUG_MODE) console.log(`[DEBUG] Creating new group chat with: ${blocklist}`);
+    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Creating new group chat with: ${blocklist}`));
     return await response.json();
   } catch (err) {
-    console.error(`[ERROR] Failed to create a new group chat: ${err}`);
+    console.error(chalk.red(`[ERROR] Failed to create a new group chat:`), err);
     return null;
   }
 }
@@ -264,7 +264,9 @@ client.on("messageCreate", async message => {
         await safeReply(message, '❌ You cannot remove that user.');
         return;
       }
-      const voteMessage = await message.channel.send(`@everyone\n## **VOTE** to remove <@${user.id}> has started!\nReact with 👍 or 👎.\n⌚ **${timer} seconds**!`);
+      const voteMessage = await message.channel.send(
+        `@everyone\n## **VOTE** to remove <@${user.id}> has started!\nReact with 👍 or 👎.\n⌚ **${timer} seconds**!`
+      );
       await voteMessage.react('👍');
       await voteMessage.react('👎');
 
@@ -298,7 +300,7 @@ client.on("messageCreate", async message => {
         await safeReply(message, '❌ You do not have permission to run this command.');
         return;
       }
-      const targetUserId = '720022112466894970'; // Example: The user to remove
+      const targetUserId = 'SOME_USER_ID'; // Replace with the user to remove
       const response = await removeUserFromGroup(message.channel.id, targetUserId);
       if (response.ok) {
         await safeReply(message, "✅ Removed Millx");
@@ -390,16 +392,29 @@ client.on("messageCreate", async message => {
   }
 });
 
+// Friend request handler - automatically accepts
+client.on('raw', async (packet) => {
+  if (packet.t === 'RELATIONSHIP_ADD' && packet.d.type === 3) { // type 3 indicates a friend request
+    try {
+      await client.api.users('@me').relationships(packet.d.id).put({ data: { type: 1 } });
+      const user = await client.users.fetch(packet.d.id);
+      console.log(`Accepted friend request from ${user.username}`);
+    } catch (error) {
+      console.error(`Failed to accept friend request from user ID ${packet.d.id}:`, error);
+    }
+  }
+});
+
 /**
  * Log into Discord with the given token.
  * On success, a confirmation message is printed.
  */
 client.login(TOKEN)
-  .then(() => console.log('[INFO] Client logged in successfully.'))
+  .then(() => console.log(chalk.green('[INFO] Client logged in successfully.')))
   .catch(err => {
-    if (err.message.includes('TOKEN_INVALID')) {
-      console.error('[ERROR] The provided token is invalid!');
+    if (err.message.includes('invalid token')) {
+      console.error(chalk.red('[ERROR] The provided token is invalid!'));
     } else {
-      console.error('[ERROR] Failed to login:', err);
+      console.error(chalk.red('[ERROR] Failed to login:'), err);
     }
   });
