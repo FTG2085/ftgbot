@@ -10,7 +10,6 @@
  */
 
 const { Client, RichPresence } = require('discord.js-selfbot-v13');
-const fetch = require('node-fetch');
 
 /**
  * -------------------------------------------------------------------
