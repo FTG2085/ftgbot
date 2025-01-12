@@ -17,6 +17,7 @@ FTGBot is a selfbot designed to perform various administrative actions in a Disc
 
 - [Node.js](https://nodejs.org/)
 - [discord.js-selfbot-v13](https://github.com/aiko-chan-ai/discord.js-selfbot-v13)
+- [chalk](https://www.npmjs.com/package/chalk)
 
 ### Installation
 
@@ -28,22 +29,26 @@ FTGBot is a selfbot designed to perform various administrative actions in a Disc
 
 2. Install the required packages:
     ```sh
-    npm install discord.js-selfbot-v13
+    npm i
     ```
 
 3. Update the configuration values in the code:
-    ```js
-    const TOKEN = "YOUR_DISCORD_TOKEN_HERE"; // A Discord USER token
-    const BOT_USER_ID = "YOUR_BOT_USER_ID";  // The user ID of the selfbot
-    const OWNER_ID = "YOUR_OWNER_ID";        // Your user ID
-    const DEBUG_MODE = false; // Enables debug logging
-
-    const blocklist = []
+    ```json
+    {
+    "TOKEN": "",
+    "BOT_USER_ID": "",
+    "OWNER_ID": "",
+    "DEBUG_MODE": false,
+    "blocklist": [
+        1234567890,
+        1234567890
+    ]
+    }
     ```
 
 4. Run the bot:
     ```sh
-    node index.js
+    node index
     ```
 
 ### Commands

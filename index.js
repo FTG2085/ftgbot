@@ -13,23 +13,28 @@ const { Client, RichPresence } = require('discord.js-selfbot-v13');
 const chalk = require('chalk');
 const fs = require('fs');
 const path = require('path');
+const { Readable } = require('stream');
+const { finished } = require('stream/promises');
 
 // Define the restricted users folder
 const RESTRICTED_USERS_FOLDER = path.join(__dirname, 'restricted_users');
+const PINS_FOLDER = path.join(__dirname, 'pins');
+const DEV_CONFIG = false;
 
-// Ensure the folder exists
+// Ensure the redirected users folder exists
 if (!fs.existsSync(RESTRICTED_USERS_FOLDER)) {
   fs.mkdirSync(RESTRICTED_USERS_FOLDER);
 }
 
-// Load configuration from config.json
-const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+// Ensure the pins folder exists
+if (!fs.existsSync(PINS_FOLDER)) {
+  fs.mkdirSync(PINS_FOLDER);
+}
 
-const TOKEN = config.TOKEN;
-const BOT_USER_ID = config.BOT_USER_ID;
-const OWNER_ID = config.OWNER_ID;
-const DEBUG_MODE = config.DEBUG_MODE;
-const blocklist = config.blocklist;
+// Load configuration from config.json
+const config = DEV_CONFIG ? JSON.parse(fs.readFileSync('config.dev.json', 'utf8')) : JSON.parse(fs.readFileSync('config.json', 'utf8'));
+
+const { TOKEN, BOT_USER_ID, OWNER_ID, DEBUG_MODE, blocklist } = config;
 
 console.clear();
 console.log(chalk.blue.bold(`⁎`), chalk.blue('FTGBot - A Discord selfbot for managing group chats by FTG2085'));
@@ -172,28 +177,6 @@ async function getChannelData(channelId) {
 }
 
 /**
- * Creates a new group chat with the listed IDs in 'blocklist'.
- * @returns {Promise<Object|null>} The new channel data or null on error.
- */
-async function createNewGroupChat() {
-  try {
-    const response = await fetch("https://discord.com/api/v9/users/@me/channels", {
-      headers: {
-        'Authorization': TOKEN,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ recipients: blocklist.map(String) }),
-      method: 'POST'
-    });
-    if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `Creating new group chat with: ${blocklist}`);
-    return await response.json();
-  } catch (err) {
-    console.error(chalk.red(`[ERROR]`), 'Failed to create a new group chat:', err);
-    return null;
-  }
-}
-
-/**
  * Main message handler: listens for commands starting with '!' and responds accordingly.
  */
 client.on("messageCreate", async message => {
@@ -206,6 +189,7 @@ client.on("messageCreate", async message => {
 
     if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `Command: ${command}, Args: ${args}`);
 
+    // !restrictuser - restrict a user from using the bot
     if (command === '!restrictuser') {
       if (message.author.id !== OWNER_ID) {
         await safeReply(message, '❌ You do not have permission to use this command.');
@@ -430,6 +414,108 @@ client.on("messageCreate", async message => {
         console.error(`[ERROR] Failed to create a new group chat: ${error}`);
       }
     }
+
+    // !pin - pin the message the user replies to
+    if (command === '!pin') {
+      if (!message.reference) {
+        await safeReply(message, '❌ Please reply to a message to pin it.');
+        return;
+      }
+
+      const repliedMessage = await message.channel.messages.fetch(message.reference.messageId);
+      if (!repliedMessage) {
+        await safeReply(message, '❌ Could not find the message to pin.');
+        return;
+      }
+      
+      if (!args[0]) {
+        await safeReply(message, '❌ Please provide a tag for the pinned message.');
+        return;
+      }
+
+      try {
+        const tag = args[0];
+        const pinFilepath = path.join(PINS_FOLDER, `${tag}.pin.json`);
+        let pinData = {
+          message: repliedMessage,
+          attachment: null
+        }
+        console.log(repliedMessage.attachments.size);
+        if (repliedMessage.attachments.size == 1) { 
+          // Get the attatchent url
+          const attachment = repliedMessage.attachments.first();
+          const attachmentUrl = attachment.url;
+          const attatchmentPath = path.join(PINS_FOLDER, attachment.name);
+
+          // Retrieve the attatchement and save it to a file using fetch
+          const stream = fs.createWriteStream(attatchmentPath);
+          const response = await fetch(attachmentUrl);
+          await finished(Readable.fromWeb(response.body).pipe(stream));
+          pinData.attachment = attatchmentPath;
+          
+        } else if (repliedMessage.attachments.size > 1) {
+          safeReply(message, '❌ Only messages with one attatchment can be pinned.');
+          return;
+        } 
+
+        try {
+          fs.writeFileSync(pinFilepath, JSON.stringify(pinData));
+        } catch (err) {
+          await safeReply(message, `❌ Error saving the pinned message: ${err}`);
+          return;
+        }
+
+        await safeReply(message, '✅ Message pinned successfully.');
+      } catch (err) {
+        await safeReply(message, `❌ Error pinning the message: ${err}`);
+      }
+    }
+
+    // !listpins - view all pinned messages
+    if (command === '!listpins') {
+      const pinnedFiles = fs.readdirSync(PINS_FOLDER);
+      if (pinnedFiles.length === 0) {
+        await safeReply(message, '❌ No pinned messages found.');
+        return;
+      }
+
+      // Reply with a list of files in the pins folder that end with .pin.json
+      const pinnedMessages = pinnedFiles
+        .filter(file => file.endsWith('.pin.json'))
+        .map(file => {
+          const tag = file.replace('.pin.json', '');
+          return `» ${tag}`;
+        });
+      await safeReply(message, `📌 Pinned messages:\n${pinnedMessages.join('\n')}`);
+    }
+
+    // !viewpin - view a pinned message
+    if (command === '!viewpin') {
+      if (args.length < 1) {
+        await safeReply(message, '❌ Please provide a tag for the pinned message.');
+        return;
+      }
+
+      const tag = args[0];
+      const pinFilepath = path.join(PINS_FOLDER, `${tag}.pin.json`);
+      if (!fs.existsSync(pinFilepath)) {
+        await safeReply(message, '❌ Pinned message not found.');
+        return;
+      }
+
+      const pinData = JSON.parse(fs.readFileSync(pinFilepath, 'utf8'));
+      const { message: pinnedMessage, attachment } = pinData;
+      if (!pinnedMessage) {
+        await safeReply(message, '❌ Pinned message data is missing.');
+        return;
+      }
+
+      await safeReply(message, `📌 Pinned message:\n${pinnedMessage.content}`);
+      if (attachment) {
+        await message.channel.send({ files: [attachment] });
+      }
+    }
+
   } catch (error) {
     console.error(chalk.red(`[ERROR]`), `Unhandled error in messageCreate: ${error}`);
     await safeReply(message, `❌ An unexpected error occurred: ${error.message}`);

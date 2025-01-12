@@ -11,3 +11,6 @@ coverage/
 *.tmp
 *.cache
 package-lock.json
+config.dev.json
+/pins
+/restricted_users
