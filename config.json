@@ -1,0 +1,10 @@
+{
+  "TOKEN": "",
+  "BOT_USER_ID": "",
+  "OWNER_ID": "",
+  "DEBUG_MODE": false,
+  "blocklist": [
+    1234567890,
+    1234567890
+  ]
+}

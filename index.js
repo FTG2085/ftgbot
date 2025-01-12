@@ -2,40 +2,37 @@
  * FTGBot - FTG2085
  * 
  * A selfbot to perform various administrative actions in a Discord group or channel.
- * This code is intended for educational and demonstration purposes only.
+ * This code is intended for educational and demonstration purposes only. 
  * USE AT YOUR OWN RISK. Selfbot behavior may violate Discord's Terms of Service.
  *
- * @fileoverview Main entry point for FTGBot (FTG2085).
+ * @fileoverview Main entry point for FTGBot (FTG2085) - A Discord selfbot by FTG2085
  * @version 2.0
  */
 
 const { Client, RichPresence } = require('discord.js-selfbot-v13');
 const chalk = require('chalk');
+const fs = require('fs');
+const path = require('path');
 
-/**
- * -------------------------------------------------------------------
- * Configuration
- * -------------------------------------------------------------------
- * Replace these placeholder values with your own details.
- */
+// Define the restricted users folder
+const RESTRICTED_USERS_FOLDER = path.join(__dirname, 'restricted_users');
 
-// IMPORTANT: Use caution; exposing your personal token publicly can lead to account insecurities.
-const TOKEN = "YOUR_DISCORD_USER_TOKEN"; // A Discord USER token
-const BOT_USER_ID = "YOUR_BOT_USER_ID";   // The user ID of the selfbot
-const OWNER_ID = "YOUR_OWNER_ID";         // Your user ID
-const DEBUG_MODE = false; // Enables debug logging
+// Ensure the folder exists
+if (!fs.existsSync(RESTRICTED_USERS_FOLDER)) {
+  fs.mkdirSync(RESTRICTED_USERS_FOLDER);
+}
 
-/**
- * A list of user IDs that cannot be removed by commands.
- * @type {number[]}
- */
-const blocklist = [
-  111111111111111111, // Replace with user ID(s) you want protected
-  222222222222222222,
-  333333333333333333
-];
+// Load configuration from config.json
+const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
-// End configuration
+const TOKEN = config.TOKEN;
+const BOT_USER_ID = config.BOT_USER_ID;
+const OWNER_ID = config.OWNER_ID;
+const DEBUG_MODE = config.DEBUG_MODE;
+const blocklist = config.blocklist;
+
+console.clear();
+console.log(chalk.blue.bold(`⁎`), chalk.blue('FTGBot - A Discord selfbot for managing group chats by FTG2085'));
 
 /**
  * Initialize selfbot client.
@@ -48,7 +45,7 @@ const client = new Client();
  * Sets a custom presence on Discord and logs a status message.
  */
 client.on('ready', async () => {
-  console.log(chalk.green(`[INFO] Logged in as ${client.user.username}`));
+  console.log(chalk.blue(`[INFO]`), `Logged in as ${client.user.username}`);
 
   // Set up custom Rich Presence
   const status = new RichPresence(client)
@@ -60,9 +57,9 @@ client.on('ready', async () => {
 
   try {
     await client.user.setPresence({ activities: [status] });
-    console.log(chalk.green('[INFO] Presence set successfully.'));
+    console.log(chalk.blue(`[INFO]`), 'Presence set successfully.');
   } catch (presenceError) {
-    console.error(chalk.red('[ERROR] Failed to set presence:'), presenceError);
+    console.error(chalk.red(`[ERROR]`), 'Failed to set presence:', presenceError);
   }
 });
 
@@ -97,12 +94,12 @@ async function safeReply(message, replyText) {
   try {
     if (message.channel) {
       await message.reply(replyText);
-      if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Replied to message: ${replyText}`));
+      if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `Replied to message: ${replyText}`);
     } else {
       throw new Error('CHANNEL_NOT_CACHED');
     }
   } catch (error) {
-    console.error(chalk.red(`[ERROR] ${error.message}. Could not find the channel in the cache!`));
+    console.error(chalk.red(`[ERROR]`), `${error.message}. Could not find the channel in the cache!`);
   }
 }
 
@@ -122,10 +119,10 @@ async function makeUserKing(channelId, newOwner) {
       body: JSON.stringify({ owner: newOwner }),
       method: 'PATCH'
     });
-    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Attempting to make user owner: ${newOwner}`));
+    if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `Attempting to make user owner: ${newOwner}`);
     return response;
   } catch (err) {
-    console.error(chalk.red(`[ERROR] Failed to make user owner:`), err);
+    console.error(chalk.red(`[ERROR]`), 'Failed to make user owner:', err);
     return { ok: false, statusText: err.message };
   }
 }
@@ -145,10 +142,10 @@ async function removeUserFromGroup(channelId, userId) {
         'Content-Type': 'application/json'
       }
     });
-    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] DELETE request to remove user: ${userId}`));
+    if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `DELETE request to remove user: ${userId}`);
     return response;
   } catch (err) {
-    console.error(chalk.red(`[ERROR] Failed to remove user from group:`), err);
+    console.error(chalk.red(`[ERROR]`), 'Failed to remove user from group:', err);
     return { ok: false, statusText: err.message };
   }
 }
@@ -166,10 +163,10 @@ async function getChannelData(channelId) {
         'Content-Type': 'application/json'
       }
     });
-    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Fetching channel data for: ${channelId}`));
+    if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `Fetching channel data for: ${channelId}`);
     return await response.json();
   } catch (err) {
-    console.error(chalk.red(`[ERROR] Failed to fetch channel data:`), err);
+    console.error(chalk.red(`[ERROR]`), 'Failed to fetch channel data:', err);
     return null;
   }
 }
@@ -188,10 +185,10 @@ async function createNewGroupChat() {
       body: JSON.stringify({ recipients: blocklist.map(String) }),
       method: 'POST'
     });
-    if (DEBUG_MODE) console.log(chalk.blue(`[DEBUG] Creating new group chat with: ${blocklist}`));
+    if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `Creating new group chat with: ${blocklist}`);
     return await response.json();
   } catch (err) {
-    console.error(chalk.red(`[ERROR] Failed to create a new group chat:`), err);
+    console.error(chalk.red(`[ERROR]`), 'Failed to create a new group chat:', err);
     return null;
   }
 }
@@ -207,8 +204,40 @@ client.on("messageCreate", async message => {
     const args = message.content.split(' ');
     const command = args.shift().toLowerCase();
 
-    if (DEBUG_MODE) console.log(`[DEBUG] Command: ${command}, Args: ${args}`);
+    if (DEBUG_MODE) console.log(chalk.gray(`[DEBUG]`), `Command: ${command}, Args: ${args}`);
 
+    if (command === '!restrictuser') {
+      if (message.author.id !== OWNER_ID) {
+        await safeReply(message, '❌ You do not have permission to use this command.');
+        return;
+      }
+
+      if (args.length < 1) {
+        await safeReply(message, '❌ Please provide a user ID to restrict.');
+        return;
+      }
+
+      const userId = args[0];
+      const reason = args.slice(1).join(' ') || 'No reason provided';
+      const userFilePath = path.join(RESTRICTED_USERS_FOLDER, `${userId}.json`);
+
+      if (fs.existsSync(userFilePath)) {
+        fs.unlinkSync(userFilePath);
+        await safeReply(message, `✅ User <@${userId}> has been unrestricted.`);
+      } else {
+        fs.writeFileSync(userFilePath, JSON.stringify({ reason }));
+        await safeReply(message, `✅ User <@${userId}> has been restricted. Reason: ${reason}`);
+      }
+      return;
+    }
+
+    // Check if the user is restricted
+    const userFilePath = path.join(RESTRICTED_USERS_FOLDER, `${message.author.id}.json`);
+    if (fs.existsSync(userFilePath)) {
+      const { reason } = JSON.parse(fs.readFileSync(userFilePath, 'utf8'));
+      await safeReply(message, `❌ You have been restricted from using FTGBot. Reason: ${reason}`);
+      return;
+    }
     // !yesking
     if (command === '!yesking') {
       if (args.length < 1) {
@@ -254,8 +283,13 @@ client.on("messageCreate", async message => {
       const userId = args[0]?.replace(/[<@>]/g, '');
       const timer = parseInt(args[1], 10);
       if (!userId || isNaN(timer)) {
-        return safeReply(message, '❌ Please provide a user ID and a timer in seconds.');
+      return safeReply(message, '❌ Please provide a user ID and a timer in seconds.');
       }
+
+      let voteMessage;
+      if (userId === '-1') {
+      voteMessage = await message.channel.send(`@everyone\n## **VOTE** to self-destruct the group chat has started!\nReact with 👍 or 👎.\n⌚ **${timer} seconds**!`);
+      } else {
       const user = message.channel.recipients?.get(userId);
       if (!user) {
         return safeReply(message, '❌ User not found.');
@@ -264,9 +298,9 @@ client.on("messageCreate", async message => {
         await safeReply(message, '❌ You cannot remove that user.');
         return;
       }
-      const voteMessage = await message.channel.send(
-        `@everyone\n## **VOTE** to remove <@${user.id}> has started!\nReact with 👍 or 👎.\n⌚ **${timer} seconds**!`
-      );
+      voteMessage = await message.channel.send(`@everyone\n## **VOTE** to remove <@${user.id}> has started!\nReact with 👍 or 👎.\n⌚ **${timer} seconds**!`);
+      }
+
       await voteMessage.react('👍');
       await voteMessage.react('👎');
 
@@ -276,15 +310,21 @@ client.on("messageCreate", async message => {
       const noVotes = reactions.get('👎') ? reactions.get('👎').count - 1 : 0;
 
       if (yesVotes > noVotes) {
+      if (userId === '-1') {
+        // Self-destruct the group chat
+        await message.channel.send(`✅ The vote passed! Self-destructing the group chat...`);
+        await client.emit('messageCreate', { ...message, content: '!selfdestruct' });
+      } else {
         const response = await removeUserFromGroup(message.channel.id, userId);
         if (response.ok) {
-          message.channel.send(`✅ <@${user.id}> has been removed from the group chat.`);
+        message.channel.send(`✅ <@${userId}> has been removed from the group chat.`);
         } else {
-          const error = await response.text().catch(() => response.statusText);
-          message.channel.send(`❌ Could not remove <@${user.id}>: ${error}`);
+        const error = await response.text().catch(() => response.statusText);
+        message.channel.send(`❌ Could not remove <@${userId}>: ${error}`);
         }
+      }
       } else {
-        message.channel.send(`❌ <@${user.id}> will not be removed from the group chat.`);
+      message.channel.send(`❌ The vote failed. No action will be taken.`);
       }
     }
 
@@ -300,7 +340,7 @@ client.on("messageCreate", async message => {
         await safeReply(message, '❌ You do not have permission to run this command.');
         return;
       }
-      const targetUserId = 'SOME_USER_ID'; // Replace with the user to remove
+      const targetUserId = '720022112466894970'; // Example: The user to remove
       const response = await removeUserFromGroup(message.channel.id, targetUserId);
       if (response.ok) {
         await safeReply(message, "✅ Removed Millx");
@@ -320,12 +360,16 @@ client.on("messageCreate", async message => {
       await safeReply(message, 'test ' + testData);
     }
 
+
+
     // !selfdestruct - remove all users in the channel then create new group:
     if (command === '!selfdestruct') {
+
       if (message.author.id !== OWNER_ID) {
         await safeReply(message, '❌ You do not have permission to run this command.');
         return;
       }
+
       const channelData = await getChannelData(message.channel.id);
       if (!channelData || !channelData.recipients) {
         await safeReply(message, '❌ Could not fetch channel recipients.');
@@ -387,12 +431,14 @@ client.on("messageCreate", async message => {
       }
     }
   } catch (error) {
-    console.error(`❌ Unhandled error in messageCreate: ${error}`);
+    console.error(chalk.red(`[ERROR]`), `Unhandled error in messageCreate: ${error}`);
     await safeReply(message, `❌ An unexpected error occurred: ${error.message}`);
   }
 });
 
-// Friend request handler - automatically accepts
+
+// friend request handler
+// automatically accepts
 client.on('raw', async (packet) => {
   if (packet.t === 'RELATIONSHIP_ADD' && packet.d.type === 3) { // type 3 indicates a friend request
     try {
@@ -405,16 +451,18 @@ client.on('raw', async (packet) => {
   }
 });
 
+
+
 /**
  * Log into Discord with the given token.
  * On success, a confirmation message is printed.
  */
 client.login(TOKEN)
-  .then(() => console.log(chalk.green('[INFO] Client logged in successfully.')))
+  .then(() => console.log(chalk.blue(`[INFO]`), 'Client logged in successfully.'))
   .catch(err => {
     if (err.message.includes('invalid token')) {
-      console.error(chalk.red('[ERROR] The provided token is invalid!'));
+      console.error(chalk.red(`[ERROR]`), 'The provided token is invalid! Check your config');
     } else {
-      console.error(chalk.red('[ERROR] Failed to login:'), err);
+      console.error(chalk.red(`[ERROR]`), 'Failed to login:', err);
     }
   });
